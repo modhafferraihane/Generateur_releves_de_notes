@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Générateur de relevés de notes</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="bg-blob blob-1"></div>
+  <div class="bg-blob blob-2"></div>
+  <div class="bg-blob blob-3"></div>
+  <div class="bg-grid"></div>
+
+  <div class="wrap">
+    <div class="brand">
+      <div class="logo">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6"/><path d="M9 17h6"/></svg>
+      </div>
+      <span class="pill">100% automatique</span>
+    </div>
+
+    <h1 class="hero-title">Générateur de <span class="grad-text">relevés de notes</span></h1>
+    <p class="hero-subtitle">
+      Filière : <strong>{{ filiere }}</strong> · Niveau : <strong>{{ niveau }}</strong> ·
+      <a class="footer-link inline" href="{{ url_for('index') }}">changer</a>
+    </p>
+
+    <main class="card">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="messages">
+            {% for category, message in messages %}
+              <div class="message {{ category }}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="16" x2="12" y2="16.01"/></svg>
+                <span>{{ message }}</span>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      <form action="{{ url_for('generate') }}" method="post" enctype="multipart/form-data" id="genForm">
+        <input type="hidden" name="filiere" value="{{ filiere }}">
+        <input type="hidden" name="niveau" value="{{ niveau }}">
+
+        <div class="dropzones">
+          <label class="dropzone" id="dz1">
+            <span class="step-badge">1</span>
+            <span class="dz-icon-circle">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            </span>
+            <span class="dz-label">PV de délibération</span>
+            <span class="dz-required">obligatoire · .xlsx</span>
+            <span class="dz-filename">Cliquer ou déposer le fichier</span>
+            <input type="file" name="pv_file" id="pv_file" accept=".xlsx" required>
+          </label>
+
+          <label class="dropzone" id="dz2">
+            <span class="step-badge">2</span>
+            <span class="dz-icon-circle">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            </span>
+            <span class="dz-label">Coordonnées des étudiants</span>
+            <span class="dz-required optional">optionnel · .xlsx</span>
+            <span class="dz-filename">Cliquer ou déposer le fichier</span>
+            <input type="file" name="coords_file" id="coords_file" accept=".xlsx">
+          </label>
+        </div>
+
+        <label class="toggle-row">
+          <input type="checkbox" name="make_pdf" id="make_pdf">
+          <span class="toggle-text">
+            <strong>Générer aussi les PDF</strong>
+            <span>Versions prêtes à imprimer (1 page A4), en plus des fichiers Excel.</span>
+          </span>
+          <span class="toggle-switch"><span class="toggle-knob"></span></span>
+        </label>
+
+        <button type="submit" id="submitBtn" disabled>
+          <span class="spinner"></span>
+          <svg class="btn-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8Z"/></svg>
+          <span class="btn-label">Générer les relevés</span>
+        </button>
+        <p class="hint" id="loadingHint" hidden>Génération en cours, merci de patienter (peut prendre une minute si l'export PDF est activé)…</p>
+      </form>
+    </main>
+
+    <p class="footnote">Traitement 100% local — aucun fichier n'est envoyé sur internet.</p>
+  </div>
+
+  <script>
+    const form = document.getElementById('genForm');
+    const btn = document.getElementById('submitBtn');
+
+    function setupDropzone(dzId, inputId) {
+      const dz = document.getElementById(dzId);
+      const input = document.getElementById(inputId);
+      const filenameEl = dz.querySelector('.dz-filename');
+
+      function showFile() {
+        const has = input.files.length > 0;
+        dz.classList.toggle('has-file', has);
+        filenameEl.textContent = has ? input.files[0].name : 'Cliquer ou déposer le fichier';
+        refresh();
+      }
+
+      input.addEventListener('change', showFile);
+      ['dragover', 'dragenter'].forEach(evt =>
+        dz.addEventListener(evt, e => { e.preventDefault(); dz.classList.add('drag-over'); }));
+      ['dragleave', 'dragend', 'drop'].forEach(evt =>
+        dz.addEventListener(evt, () => dz.classList.remove('drag-over')));
+      dz.addEventListener('drop', e => {
+        e.preventDefault();
+        if (e.dataTransfer.files.length) {
+          input.files = e.dataTransfer.files;
+          showFile();
+        }
+      });
+      return input;
+    }
+
+    const pv1 = setupDropzone('dz1', 'pv_file');
+    setupDropzone('dz2', 'coords_file');
+
+    function refresh() {
+      btn.disabled = !pv1.files.length;
+    }
+
+    form.addEventListener('submit', () => {
+      btn.disabled = true;
+      btn.classList.add('loading');
+      btn.querySelector('.btn-label').textContent = 'Génération en cours…';
+      document.getElementById('loadingHint').hidden = false;
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Relevés générés</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="bg-blob blob-1"></div>
+  <div class="bg-blob blob-2"></div>
+  <div class="bg-blob blob-3"></div>
+  <div class="bg-grid"></div>
+
+  <div class="wrap">
+    <div class="brand">
+      <div class="logo">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6"/><path d="M9 17h6"/></svg>
+      </div>
+      <span class="pill">100% automatique</span>
+    </div>
+
+    <main class="card">
+      <div class="result-header">
+        <div class="check-ring">
+          <div class="check">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+        </div>
+        <div>
+          <h1><span class="grad-text">{{ students|length }}</span> relevé{{ 's' if students|length != 1 else '' }} généré{{ 's' if students|length != 1 else '' }}</h1>
+          <p>Prêts à télécharger ci-dessous.</p>
+        </div>
+      </div>
+
+      {% if warnings %}
+        <div class="messages">
+          {% for w in warnings %}
+            <div class="message warning">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              <span>{{ w }}</span>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <a class="button full-top" href="{{ url_for('download', batch_id=batch_id, filename=zip_name) }}">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Télécharger tout (ZIP)
+      </a>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Étudiant</th>
+            <th>Excel</th>
+            {% if pdf_by_xlsx %}<th>PDF</th>{% endif %}
+            {% if ar_by_xlsx %}<th>Attestation</th>{% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for name in students %}
+            <tr>
+              <td>{{ name.replace('Releve_', '').replace('.xlsx', '').replace('_', ' ') }}</td>
+              <td><a class="file-link" href="{{ url_for('download', batch_id=batch_id, filename=name) }}">.xlsx</a></td>
+              {% if pdf_by_xlsx %}
+                <td>
+                  {% if pdf_by_xlsx.get(name) %}
+                    <a class="file-link" href="{{ url_for('download', batch_id=batch_id, filename=pdf_by_xlsx[name]) }}">.pdf</a>
+                  {% else %}
+                    <span class="muted-dash">—</span>
+                  {% endif %}
+                </td>
+              {% endif %}
+              {% if ar_by_xlsx %}
+                <td>
+                  {% if ar_by_xlsx.get(name) %}
+                    <a class="file-link" href="{{ url_for('download', batch_id=batch_id, filename=ar_by_xlsx[name]) }}">.docx</a>
+                  {% else %}
+                    <span class="muted-dash">—</span>
+                  {% endif %}
+                </td>
+              {% endif %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <a class="footer-link" href="{{ url_for('index') }}">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+        Générer un nouveau lot
+      </a>
+    </main>
+  </div>
+</body>
+</html>

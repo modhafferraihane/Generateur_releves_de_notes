@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(py --version)",
+      "Bash(py3 --version)",
+      "Bash(where python3 *)",
+      "Bash(where py *)",
+      "Bash(npm --version)",
+      "PowerShell(try { $excel = New-Object -ComObject Excel.Application; Write-Output \"Excel COM available, version: $\\($excel.Version\\)\"; $excel.Quit\\(\\) } catch { Write-Output \"No Excel COM: $\\($_.Exception.Message\\)\" })"
+    ]
+  }
+}

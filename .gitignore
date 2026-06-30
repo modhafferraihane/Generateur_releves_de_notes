@@ -1,0 +1,8 @@
+# Donnees generees (contiennent des donnees personnelles d'etudiants -
+# ne doivent jamais etre publiees)
+web_runs/
+releves_generes/
+
+# Python
+__pycache__/
+*.pyc

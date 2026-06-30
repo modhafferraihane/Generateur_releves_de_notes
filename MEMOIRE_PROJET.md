@@ -277,6 +277,67 @@ de planter.
 
 ---
 
+## Étape 8 — Nettoyage confidentialité + installation en une commande
+
+**Besoin :** README simplifié pour un public non technique (demande
+distincte, traitée d'abord), puis : pouvoir installer le programme sur un
+autre PC sans téléchargement/manipulation manuelle visible — une seule
+commande PowerShell.
+
+**Incident découvert en cours de route :** le dépôt GitHub
+(`modhafferraihane/Generateur_releves_de_notes`) est **public**, et
+`web_runs/` (résultats de tests précédents) y était suivi par git — 61
+fichiers contenant de vraies données d'étudiants (noms, dates de
+naissance, CIN) étaient donc exposés publiquement. Signalé à l'utilisateur
+avant de continuer.
+
+**Décisions (utilisateur) :**
+- Nettoyer `web_runs/` du suivi git **et de l'historique** (pas juste du
+  HEAD), mais garder le dépôt **public** (besoin du lien public pour
+  l'installateur).
+- Les fichiers "exemple" (`Exemple Relevé de Notes.xlsx`, `L1 BIG
+  DATA.xlsx`, `قائمـة الطلبـة المسجليـن 25-26.xlsx`) contiennent aussi de
+  vraies données (ex. CIN/naissance de "Nermine Abessi" dans le gabarit) —
+  signalé séparément, l'utilisateur a choisi de les garder publics tels
+  quels (ce sont ses propres données d'établissement).
+
+**Réalisé :**
+- Ajout d'un `.gitignore` (`web_runs/`, `releves_generes/`,
+  `__pycache__/`, `*.pyc`).
+- `git rm --cached` sur `web_runs/` et `__pycache__/`, puis **réécriture
+  complète de l'historique** (`git checkout --orphan` + un seul commit
+  squashé reprenant l'état propre du dépôt) pour que les anciennes données
+  ne soient plus accessibles via aucun commit, et `git push --force`.
+  Vérifié après coup via l'API GitHub (`/repos/.../commits`) : un seul
+  commit visible, plus aucune trace de `web_runs/`.
+- `install.ps1` (nouveau, à la racine du projet) : script PowerShell
+  autonome qui télécharge le zip du dépôt GitHub (`archive/refs/heads/main.zip`),
+  l'installe dans `%USERPROFILE%\Generateur_releves_de_notes`, installe
+  Python via `winget` si absent (recherche ensuite l'exécutable dans
+  `%LOCALAPPDATA%\Programs\Python\Python3*` plutôt que de compter sur un
+  PATH pas encore rafraîchi dans la session courante), installe les
+  dépendances, écrit un `Lancer le programme.bat` (avec le chemin complet
+  de `python.exe` codé en dur, donc indépendant du PATH) copié aussi sur
+  le Bureau, puis lance le programme et ouvre le navigateur.
+- `README.md` : section installation remplacée par la commande unique
+  `irm https://raw.githubusercontent.com/.../install.ps1 | iex`.
+- Validé de bout en bout : exécution du script (variante de test pointant
+  vers un dossier sandbox au lieu de `%USERPROFILE%`/Bureau) depuis l'URL
+  GitHub réelle — téléchargement, dépendances installées
+  (Flask/openpyxl/python-docx confirmés importables), lancement du
+  serveur, page d'accueil servie correctement (200, contenu attendu).
+
+**Notes / limites :**
+- `install.ps1` suppose `winget` disponible (Windows 10 récent / Windows
+  11) ; pas de fallback prévu si absent.
+- Pas de purge côté support GitHub des objets de l'ancien historique
+  (force-push rend l'ancien historique inaccessible depuis les refs
+  normales, mais GitHub peut transitoirement garder les objets en cache
+  avant garbage collection) — suffisant pour l'usage demandé (dépôt reste
+  public mais sans `web_runs/` dans l'historique visible).
+
+---
+
 ## État actuel des règles métier (à respecter si on reprend le projet)
 
 - Sortie : un `.xlsx` (+ `.pdf` en option) + une attestation `.docx` par

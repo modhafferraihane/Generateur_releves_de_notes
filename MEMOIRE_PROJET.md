@@ -16,7 +16,7 @@ ligne de commande (`generate_releves.py`).
 Contexte : programme "Licence Big Data et Analyse de Données" L1, en
 Tunisie (jury signé "Skander CHRIGUI", lieu "Tunis").
 
----
+--- 
 
 ## Étape 1 — Génération de base (PV → relevés .xlsx)
 

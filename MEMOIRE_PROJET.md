@@ -418,6 +418,65 @@ Docker Desktop) :**
 
 ---
 
+## Étape 10 — Badge "Docker" dans l'interface + incident post-déploiement
+
+**Besoin :** l'utilisateur voulait un moyen visuel de vérifier, dans
+l'interface web, qu'il regarde bien l'instance qui tourne dans le
+conteneur Docker (et pas une autre instance locale) ; a testé et remonté
+une erreur : `Erreur pendant la generation : [Errno 2] No such file or
+directory: 'D:\...\Exemple Relevé de Notes.xlsx'`.
+
+**Diagnostic de l'erreur (deux causes cumulées, trouvées via inspection du
+port 5000 côté Windows) :**
+1. **Deux processus `python.exe` locaux orphelins** tournaient déjà sur le
+   port `127.0.0.1:5000` depuis plusieurs jours (PID 51664 depuis le
+   30/06, PID 10428 depuis le 01/07 — visiblement d'anciens lancements
+   locaux jamais arrêtés proprement). Le conteneur Docker de l'utilisateur
+   était donc resté bloqué à l'état `Created` (jamais démarré, erreur
+   `ports are not available`), et ses tests sur `http://127.0.0.1:5000`
+   tombaient en fait sur l'ancien process local — qui avait mis en cache au
+   démarrage le chemin `TEMPLATE_RELEVE_PATH` pointant vers l'ancien
+   emplacement du fichier modèle (à la racine du projet), fichier depuis
+   déplacé/supprimé (probablement lors de la préparation du dossier
+   `modeles/` pour Docker). D'où l'erreur `FileNotFoundError` sur un chemin
+   Windows classique et non un chemin `/app/modeles` du conteneur.
+2. Une fois le port libéré, le conteneur démarrait mais s'arrêtait aussitôt
+   avec `Fichier modele introuvable` (message ajouté à l'Étape 9) : le
+   dossier `modeles/` créé par l'utilisateur pour Docker était vide (le
+   fichier `Exemple ... .xlsx` n'y avait pas encore été copié).
+
+**Réalisé :**
+- Arrêt des deux processus orphelins (confirmé sur demande de
+  l'utilisateur), conteneur ensuite démarré avec succès sur le port libéré.
+- `app.py` : ajout d'une variable `IN_DOCKER` (lue depuis la variable
+  d'environnement du même nom) injectée dans tous les templates via un
+  `context_processor` Flask (`inject_in_docker`), donc disponible
+  automatiquement sans y penser dans chaque `render_template`.
+- `Dockerfile` : ajout de `ENV IN_DOCKER=1` (seulement dans l'image
+  Docker — absent en local, donc `in_docker` reste `False` par défaut).
+- `templates/index.html`, `upload.html`, `result.html` : badge
+  `🐳 Docker` (réutilise la classe `.pill` déjà existante, pas de CSS
+  ajouté) affiché à côté du badge "100% automatique" quand `in_docker` est
+  vrai.
+- `.gitignore` : ajout de `modeles/` — ce dossier (créé par l'utilisateur
+  dans le projet, suivant les instructions Docker du README) contient le
+  fichier modèle privé de l'établissement ; comme le dépôt GitHub est
+  public (cf. Étape 8), il ne doit jamais être suivi par git.
+- Validé : rebuild de l'image, badge confirmé présent dans le HTML servi
+  par le conteneur (`curl` sur la page d'accueil), absent en dehors de
+  Docker par défaut.
+
+**Notes / limites :**
+- Le badge ne dit rien sur *quel* conteneur/instance exactement (utile
+  seulement pour distinguer Docker vs local) ; suffisant pour le besoin
+  exprimé.
+- La cause racine réelle de l'incident (processus locaux jamais arrêtés
+  occupant le port) n'est pas quelque chose que le code peut détecter ou
+  empêcher : à surveiller si le problème revient (`Get-NetTCPConnection
+  -LocalPort 5000` côté Windows pour identifier l'`OwningProcess`).
+
+---
+
 ## État actuel des règles métier (à respecter si on reprend le projet)
 
 - Sortie : un `.xlsx` (+ `.pdf` en option) + une attestation `.docx` par

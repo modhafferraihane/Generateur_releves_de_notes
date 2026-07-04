@@ -36,6 +36,13 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "releve-generator-local")
 app.config["MAX_CONTENT_LENGTH"] = 32 * 1024 * 1024  # 32 Mo
 
+IN_DOCKER = os.environ.get("IN_DOCKER") == "1"
+
+
+@app.context_processor
+def inject_in_docker():
+    return {"in_docker": IN_DOCKER}
+
 
 def is_valid_batch_id(batch_id):
     return bool(batch_id) and all(c.isalnum() or c in "-_" for c in batch_id) and ".." not in batch_id

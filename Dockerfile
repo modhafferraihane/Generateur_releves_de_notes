@@ -39,7 +39,8 @@ ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     HOME=/app \
-    TEMPLATES_DIR=/app/modeles
+    TEMPLATES_DIR=/app/modeles \
+    IN_DOCKER=1
 
 COPY --chown=appuser:appuser . .
 

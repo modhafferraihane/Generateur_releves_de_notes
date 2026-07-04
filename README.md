@@ -99,7 +99,7 @@ Python directement sur votre ordinateur.
    dossier > **Ouvrir dans le terminal**) et lancez :
 
    ```
-   docker compose up -d
+   docker compose up -d --build
    ```
 
    La toute première fois, cela peut prendre quelques minutes (Docker
@@ -107,10 +107,21 @@ Python directement sur votre ordinateur.
 5. Ouvrez votre navigateur sur **http://127.0.0.1:5000** : le site
    fonctionne exactement comme dans le reste de ce README.
 
+   Pour être sûr·e que c'est bien la version Docker qui s'affiche (et pas
+   une autre copie du programme déjà lancée sur votre ordinateur), regardez
+   en haut de la page : un badge **🐳 Docker** apparaît à côté de "100%
+   automatique" uniquement dans la version conteneurisée.
+
 ### Arrêter / relancer
 
 - Pour arrêter : `docker compose down`
-- Pour relancer plus tard : `docker compose up -d`
+- Pour relancer plus tard : `docker compose up -d` (sans `--build`, c'est
+  plus rapide ; utilisez `--build` uniquement si vous avez retéléchargé une
+  nouvelle version du projet)
+- Si le site ne démarre pas ou que le badge **🐳 Docker** n'apparaît pas :
+  une autre copie du programme (installation classique) tourne peut-être
+  déjà sur le port 5000. Fermez-la (voir section "Utilisation" ci-dessus)
+  avant de relancer `docker compose up -d`.
 
 ### À savoir
 

@@ -3,6 +3,9 @@
 web_runs/
 releves_generes/
 
+# Modele Excel/Word de l'etablissement, place ici pour Docker (voir README)
+modeles/
+
 # Python
 __pycache__/
 *.pyc

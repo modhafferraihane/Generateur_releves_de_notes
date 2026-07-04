@@ -1,0 +1,25 @@
+services:
+  releves:
+    build: .
+    image: generateur-releves:latest
+    container_name: generateur-releves
+    restart: unless-stopped
+    ports:
+      # N'ecoute que sur localhost : l'appli n'est pas protegee par un mot
+      # de passe, elle ne doit donc pas etre accessible depuis le reseau.
+      - "127.0.0.1:5000:5000"
+    volumes:
+      # Dossier a cote de ce fichier, contenant vos modeles
+      # "Exemple ....xlsx" et (optionnel) "AR ....docx". Lecture seule :
+      # le conteneur n'a pas besoin d'y ecrire.
+      - ./modeles:/app/modeles:ro
+      # Fichiers generes (donnees personnelles d'etudiants), conserves entre
+      # deux redemarrages sans etre stockes dans l'image.
+      - releves_data:/app/web_runs
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+volumes:
+  releves_data:

@@ -338,6 +338,86 @@ avant de continuer.
 
 ---
 
+## Étape 9 — Conteneurisation Docker
+
+**Besoin :** pouvoir lancer l'appli web (`app.py`) dans un conteneur Docker,
+avec les bonnes pratiques de sécurité (image minimale, multi-stage,
+utilisateur non-root), et une section README compréhensible par un
+débutant.
+
+**Décisions / contraintes prises en compte :**
+- Le fichier modèle (`Exemple ....xlsx`, optionnellement `AR ....docx`)
+  contient des données spécifiques à l'établissement et ne doit **jamais**
+  être copié dans l'image Docker (cohérent avec le fait qu'il n'est déjà
+  pas commité de façon fiable dans le dépôt, cf. Étape 8) : il est monté en
+  volume en lecture seule au lieu d'être `COPY`.
+- `export_pdf.py` (case "Générer aussi les PDF") dépend de Microsoft Excel
+  via COM (`win32com`), donc **ne fonctionne pas** en conteneur Linux.
+  `requirements.txt` marque déjà `pywin32` avec `sys_platform == "win32"`,
+  donc `pip install` l'ignore proprement sous Linux ; l'appli continue de
+  fonctionner sans cette option (le code affiche déjà un message d'erreur
+  récupérable si l'export échoue, testé en conteneur : aucun changement
+  nécessaire côté `app.py` pour ce point).
+
+**Réalisé :**
+- `app.py` : chemin des modèles rendu configurable via la variable
+  d'environnement `TEMPLATES_DIR` (défaut : à côté de `app.py`, comme
+  avant — comportement Windows inchangé). Le `next(glob(...))` qui levait
+  une `StopIteration` brute si le fichier modèle manquait est remplacé par
+  un message d'erreur clair. `SECRET_KEY` rendue configurable par variable
+  d'environnement (défaut inchangé).
+- `Dockerfile` : build multi-stage (`builder` avec venv → image finale
+  `python:3.12-slim-bookworm`), `apt-get upgrade` des paquets système au
+  build, utilisateur non-root dédié (`appuser`, uid/gid 1000, home pointé
+  sur `/app` plutôt que `/home/appuser` jamais créé), pas de compilateur ni
+  paquet superflu dans l'image finale, `HEALTHCHECK` via
+  `urllib.request` (pas de `curl` installé), serveur `gunicorn` avec
+  `--preload` (voir plus bas), variable `TEMPLATES_DIR=/app/modeles`.
+- `.dockerignore` : exclut `web_runs/`, `releves_generes/`, `modeles/`, les
+  fichiers modèles (`Exemple*.xlsx`, `AR*.docx`, `PV*.xlsx`), `.git/`,
+  scripts Windows (`*.bat`, `*.vbs`, `install.ps1`).
+- `docker-compose.yml` : service unique, port publié sur
+  `127.0.0.1:5000` seulement (l'appli n'a pas d'authentification — ne
+  jamais l'exposer sur `0.0.0.0`/le réseau), volume bind `./modeles` en
+  lecture seule pour les modèles, volume nommé `releves_data` pour
+  `web_runs/` (persistant entre redémarrages sans polluer l'image),
+  `cap_drop: [ALL]` + `no-new-privileges:true`.
+- `README.md` : nouvelle section "Autre façon d'installer : avec Docker
+  (optionnel)", gardée simple (pas de vocabulaire type "multi-stage",
+  "non-root", "healthcheck") en cohérence avec [[feedback-readme-simplicity]] ;
+  limite PDF/Excel mentionnée en une phrase.
+
+**Bugs trouvés et corrigés pendant les tests (build + run réels avec
+Docker Desktop) :**
+- Sans `--preload`, une erreur au démarrage de l'appli (ex. modèle
+  manquant) faisait boucler indéfiniment le redémarrage des workers
+  gunicorn au lieu de stopper le conteneur avec un message clair. Ajout de
+  `--preload` : l'import a lieu une seule fois dans le process principal,
+  qui s'arrête proprement (code retour 1) si `app.py` lève une exception au
+  chargement.
+- `useradd --no-create-home` laissait `$HOME=/home/appuser` pointer vers un
+  dossier inexistant → gunicorn plantait sur `Control server error:
+  Permission denied`. Corrigé en fixant `--home-dir /app` + `ENV HOME=/app`.
+- `/app` restait possédé par `root` (créé par `WORKDIR` avant la création de
+  l'utilisateur ; `COPY --chown` ne change que les fichiers copiés, pas le
+  dossier parent déjà existant) → `appuser` ne pouvait pas y créer
+  `.gunicorn/` (socket de contrôle). Corrigé avec un `chown appuser:appuser
+  /app` explicite juste après la création de l'utilisateur.
+- Validé de bout en bout : `docker build`, run sans modèle (arrêt propre
+  avec message), run avec modèle monté en volume (page d'accueil 200,
+  healthcheck `healthy`, process tournant en `uid=1000(appuser)`), puis via
+  `docker compose up -d` avec le dossier `modeles/` attendu par la doc.
+
+**Notes / limites :**
+- L'export PDF reste une fonctionnalité Windows + Excel uniquement, non
+  disponible en conteneur : documenté dans le README comme limite connue de
+  la méthode Docker, pas comme bug.
+- Pas de signature/scan d'image (Trivy, cosign, etc.) mis en place : hors
+  périmètre demandé, à envisager si l'image est un jour poussée vers un
+  registre partagé plutôt qu'utilisée en local.
+
+---
+
 ## État actuel des règles métier (à respecter si on reprend le projet)
 
 - Sortie : un `.xlsx` (+ `.pdf` en option) + une attestation `.docx` par

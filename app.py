@@ -4,6 +4,7 @@ reussite) a partir d'un PV de deliberation. Parcours : choix de la filiere
 ("/") -> depot des fichiers ("/upload") -> generation ("/generate"). Lancer
 avec : python app.py, puis ouvrir http://127.0.0.1:5000 dans un navigateur.
 """
+import os
 import shutil
 import traceback
 import uuid
@@ -16,13 +17,23 @@ from werkzeug.utils import secure_filename
 import generate_releves as gen
 
 BASE_DIR = Path(__file__).resolve().parent
-TEMPLATE_RELEVE_PATH = next(BASE_DIR.glob("Exemple*.xlsx"))
-TEMPLATE_AR_PATH = next(BASE_DIR.glob("AR*.docx"), None)
+# Dossier contenant les modeles Exemple*.xlsx / AR*.docx : configurable via
+# TEMPLATES_DIR (utilise par Docker, ou ces fichiers sont montes en volume
+# plutot que copies dans l'image). Par defaut, memes fichiers qu'avant : a
+# cote de app.py.
+TEMPLATES_DIR = Path(os.environ.get("TEMPLATES_DIR", str(BASE_DIR)))
+try:
+    TEMPLATE_RELEVE_PATH = next(TEMPLATES_DIR.glob("Exemple*.xlsx"))
+except StopIteration:
+    raise SystemExit(
+        f"Fichier modele introuvable : placez un fichier 'Exemple ....xlsx' dans {TEMPLATES_DIR}"
+    )
+TEMPLATE_AR_PATH = next(TEMPLATES_DIR.glob("AR*.docx"), None)
 RUNS_DIR = BASE_DIR / "web_runs"
 RUNS_DIR.mkdir(exist_ok=True)
 
 app = Flask(__name__)
-app.secret_key = "releve-generator-local"
+app.secret_key = os.environ.get("SECRET_KEY", "releve-generator-local")
 app.config["MAX_CONTENT_LENGTH"] = 32 * 1024 * 1024  # 32 Mo
 
 

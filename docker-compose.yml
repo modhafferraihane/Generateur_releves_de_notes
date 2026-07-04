@@ -3,7 +3,6 @@ services:
     build: .
     image: generateur-releves:latest
     container_name: generateur-releves
-    restart: unless-stopped
     ports:
       # N'ecoute que sur localhost : l'appli n'est pas protegee par un mot
       # de passe, elle ne doit donc pas etre accessible depuis le reseau.

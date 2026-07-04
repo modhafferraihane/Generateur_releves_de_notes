@@ -127,7 +127,7 @@ vous pouvez lancer directement l'image publiée sur Docker Hub.
 2. Ouvrez un terminal dans ce dossier (PowerShell recommandé) et lancez :
 
    ```
-   docker run -d --name generateur-releves --restart unless-stopped -p 127.0.0.1:5000:5000 -v ./modeles://app/modeles:ro modovar/generateur-releves:1.0
+   docker run -d --name generateur-releves -p 127.0.0.1:5000:5000 -v ./modeles://app/modeles:ro modovar/generateur-releves:1.0
    ```
 
    > Le double `//` avant `app/modeles` est volontaire : ça évite un bug

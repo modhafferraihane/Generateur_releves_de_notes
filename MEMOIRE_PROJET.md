@@ -477,6 +477,88 @@ port 5000 côté Windows) :**
 
 ---
 
+## Étape 11 — Retrait du volume `releves_data`, préparation Docker Hub
+
+**Besoin :** l'utilisateur veut pousser l'image sur Docker Hub (publique) et
+tient à ce qu'aucune donnée personnelle d'étudiant ne fuite — ni dans
+l'image elle-même, ni en persistant inutilement sur le disque après usage.
+
+**Incident trouvé pendant la préparation du push :** les 3 fichiers de
+données réelles (`L1 BIG DATA.xlsx`, `L1 GLSI.xlsx`, liste des étudiants)
+avaient été déplacés à la racine du projet (Étape 10, sur demande de
+l'utilisateur), où ni `.dockerignore` ni `.gitignore` ne les excluaient
+(motifs `Exemple*`/`AR*`/`PV*` trop spécifiques). Un build à ce moment
+aurait copié ces données dans l'image. Corrigé en passant à une exclusion
+large par extension (`*.xlsx`, `*.docx`) dans les deux fichiers, plutôt que
+des motifs de préfixe — l'image n'a de toute façon jamais besoin d'un
+fichier Excel/Word copié dedans. Vérifié par audit complet de l'image
+buildée (`find / -iname "*.xlsx" -o -iname "*.docx"` dans un conteneur
+temporaire) : seul reste `default.docx`, le template générique de la
+librairie `python-docx` elle-même (pas une donnée utilisateur).
+
+**Incident post-push (remonté par l'utilisateur) :** conteneur en boucle de
+redémarrage avec `Fichier modele introuvable`, alors que le fichier était
+bien présent dans `modeles/`. Diagnostic (`docker inspect --format
+'{{json .Mounts}}'`) : la commande `docker run ... -v ./modeles:/app/modeles:ro`
+avait été lancée depuis **Git Bash**, qui convertit automatiquement les
+chemins commençant par `/` en chemins Windows (`/app/modeles:ro` devenait
+un chemin du type `\Program Files\Git\app\modeles;ro`), cassant le montage
+sans erreur visible au lancement. Reproduit et confirmé : la même commande
+fonctionne normalement depuis PowerShell. Corrigé en ajoutant un
+avertissement explicite dans le README ("PowerShell, pas Git Bash") aux
+deux endroits où une commande `docker run`/`docker compose` est donnée.
+
+**Question utilisateur, remise en cause du volume `releves_data` :**
+l'utilisateur a fait remarquer que les fichiers générés sont de toute façon
+téléchargés via le navigateur (boutons du site), et a demandé pourquoi un
+volume nommé `releves_data:/app/web_runs` était nécessaire en plus. Vérifié
+dans `app.py` : il n'existe aucune page listant les lots déjà générés — le
+seul moyen d'accéder à un relevé est le lien affiché juste après la
+génération (`/download/<batch_id>/<filename>`). Rien ne dépend donc de la
+persistance de `/app/web_runs` au-delà d'une session de génération. Conclu
+que ce volume n'apportait aucun bénéfice réel et allait même à l'encontre
+du besoin exprimé (moins de données d'étudiants qui traînent, pas plus).
+
+**Réalisé :**
+- `docker-compose.yml` : suppression du volume nommé `releves_data` (et de
+  sa déclaration `volumes:` en pied de fichier). Seul reste le bind mount
+  `./modeles:/app/modeles:ro`.
+- `README.md` : commande `docker run` alignée (suppression de `-v
+  releves_data:/app/web_runs`) ; avertissement PowerShell/Git Bash ajouté
+  aux deux méthodes de lancement ; section "À savoir" reformulée pour
+  dire clairement que `docker compose down`/`docker rm` efface les
+  fichiers générés (comportement voulu, pas un bug).
+- Validé : rebuild + `docker compose up -d --build`, conteneur `healthy`,
+  un seul mount actif (`docker inspect --format '{{json .Mounts}}'`), page
+  d'accueil HTTP 200.
+
+**Suite immédiate — question de l'utilisateur :** une fois le volume
+`releves_data` retiré, l'utilisateur a demandé si l'étape `RUN mkdir -p
+web_runs releves_generes && chown ...` du `Dockerfile` restait utile.
+Vérifié : `app.py` fait déjà lui-même `RUNS_DIR.mkdir(exist_ok=True)` au
+démarrage (`/app` appartenant à `appuser`, il peut créer ce sous-dossier
+sans aide) ; `releves_generes/` n'est référencé que par le script CLI
+`generate_releves.py` (jamais lancé dans le conteneur, seul `app.py` l'est
+via gunicorn). L'étape était donc entièrement redondante.
+
+- `Dockerfile` : suppression du bloc `RUN mkdir -p web_runs
+  releves_generes && chown -R appuser:appuser ...`.
+- Validé de bout en bout, pas juste un démarrage : rebuild, requête réelle
+  `POST /generate` (script Python avec un vrai PV `L1 GLSI.xlsx`, en
+  contournant `curl -F` qui corrompait l'encodage UTF-8 de l'argument
+  `filiere` sous Git Bash), 6 relevés générés avec succès, ZIP téléchargé
+  (`/download/.../releves.zip`, 200, 60295 octets), fichiers du lot
+  vérifiés dans le conteneur avec les bons droits (`appuser:appuser`) via
+  `docker exec ... ls -la /app/web_runs/<batch_id>`.
+
+**Notes / limites :**
+- Sans ce volume, `/app/web_runs` vit uniquement dans la couche
+  inscriptible du conteneur : les fichiers générés disparaissent dès que le
+  conteneur est supprimé (`docker compose down`, `docker rm`), mais
+  survivent à un simple arrêt/relance (`docker stop`/`docker start`,
+  `docker compose stop`/`start`). Comportement assumé et documenté, pas une
+  régression.
+
 ## État actuel des règles métier (à respecter si on reprend le projet)
 
 - Sortie : un `.xlsx` (+ `.pdf` en option) + une attestation `.docx` par

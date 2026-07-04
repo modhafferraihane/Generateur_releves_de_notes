@@ -95,12 +95,16 @@ Python directement sur votre ordinateur.
 2. Dans le dossier obtenu, créez un nouveau dossier nommé **modeles**.
 3. Mettez-y votre fichier `Exemple ... .xlsx` (et `AR ... .docx` si vous en
    avez un).
-4. Ouvrez un terminal dans ce dossier (sous Windows : clic droit dans le
-   dossier > **Ouvrir dans le terminal**) et lancez :
+4. Ouvrez **PowerShell** dans ce dossier (clic droit dans le dossier >
+   **Ouvrir dans le terminal**) et lancez :
 
    ```
    docker compose up -d --build
    ```
+
+   > ⚠️ Utilisez bien PowerShell, pas Git Bash : avec Git Bash, la commande
+   > peut mal interpréter les chemins et empêcher le conteneur de trouver
+   > votre fichier modèle.
 
    La toute première fois, cela peut prendre quelques minutes (Docker
    télécharge et prépare tout).
@@ -120,10 +124,11 @@ vous pouvez lancer directement l'image publiée sur Docker Hub.
 1. Créez un dossier vide (par exemple `generateur-releves`), et dedans un
    dossier **modeles** contenant votre fichier `Exemple ... .xlsx` (et
    `AR ... .docx` si vous en avez un).
-2. Ouvrez un terminal dans ce dossier et lancez :
+2. Ouvrez **PowerShell** dans ce dossier (pas Git Bash, voir l'avertissement
+   ci-dessus) et lancez :
 
    ```
-   docker run -d --name generateur-releves --restart unless-stopped -p 127.0.0.1:5000:5000 -v ./modeles:/app/modeles:ro -v releves_data:/app/web_runs modovar/generateur-releves:1.0
+   docker run -d --name generateur-releves --restart unless-stopped -p 127.0.0.1:5000:5000 -v ./modeles:/app/modeles:ro modovar/generateur-releves:1.0
    ```
 
 3. Ouvrez votre navigateur sur **http://127.0.0.1:5000**.
@@ -143,9 +148,11 @@ vous pouvez lancer directement l'image publiée sur Docker Hub.
 
 ### À savoir
 
-- Les fichiers générés restent disponibles tant que vous ne supprimez pas
-  le conteneur : utilisez toujours les boutons de téléchargement du site
-  pour les récupérer sur votre ordinateur.
+- Téléchargez toujours vos fichiers générés tout de suite avec les boutons
+  du site : ils ne sont pas conservés ailleurs. `docker compose down` (ou
+  `docker rm`) efface le conteneur et tout ce qui a été généré avec —
+  volontairement, pour ne garder aucune donnée d'étudiant qui traîne une
+  fois que vous avez récupéré vos fichiers.
 - Si vous mettez à jour votre fichier modèle dans le dossier `modeles`,
   relancez avec `docker compose up -d` pour que le changement soit pris en
   compte.

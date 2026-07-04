@@ -44,10 +44,10 @@ ENV PATH="/opt/venv/bin:$PATH" \
 
 COPY --chown=appuser:appuser . .
 
-# Dossiers ecrits a l'execution (donnees generees, potentiellement montes en
-# volume) : crees a l'avance avec les bons droits pour l'utilisateur non-root.
-RUN mkdir -p web_runs releves_generes \
-    && chown -R appuser:appuser web_runs releves_generes
+# web_runs/ (dossier des fichiers generes) est cree par app.py lui-meme au
+# demarrage (RUNS_DIR.mkdir(exist_ok=True)) : /app appartient a appuser,
+# donc pas besoin de le pre-creer ici. releves_generes/ n'est utilise que
+# par le script CLI generate_releves.py, jamais par l'appli web du conteneur.
 
 USER appuser
 

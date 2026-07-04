@@ -13,13 +13,7 @@ services:
       # "Exemple ....xlsx" et (optionnel) "AR ....docx". Lecture seule :
       # le conteneur n'a pas besoin d'y ecrire.
       - ./modeles:/app/modeles:ro
-      # Fichiers generes (donnees personnelles d'etudiants), conserves entre
-      # deux redemarrages sans etre stockes dans l'image.
-      - releves_data:/app/web_runs
     security_opt:
       - no-new-privileges:true
     cap_drop:
       - ALL
-
-volumes:
-  releves_data:

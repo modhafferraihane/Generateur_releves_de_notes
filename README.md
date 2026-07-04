@@ -124,12 +124,15 @@ vous pouvez lancer directement l'image publiée sur Docker Hub.
 1. Créez un dossier vide (par exemple `generateur-releves`), et dedans un
    dossier **modeles** contenant votre fichier `Exemple ... .xlsx` (et
    `AR ... .docx` si vous en avez un).
-2. Ouvrez **PowerShell** dans ce dossier (pas Git Bash, voir l'avertissement
-   ci-dessus) et lancez :
+2. Ouvrez un terminal dans ce dossier (PowerShell recommandé) et lancez :
 
    ```
-   docker run -d --name generateur-releves --restart unless-stopped -p 127.0.0.1:5000:5000 -v ./modeles:/app/modeles:ro modovar/generateur-releves:1.0
+   docker run -d --name generateur-releves --restart unless-stopped -p 127.0.0.1:5000:5000 -v ./modeles://app/modeles:ro modovar/generateur-releves:1.0
    ```
+
+   > Le double `//` avant `app/modeles` est volontaire : ça évite un bug
+   > connu de Git Bash qui déforme sinon ce chemin et empêche le conteneur
+   > de trouver votre fichier modèle.
 
 3. Ouvrez votre navigateur sur **http://127.0.0.1:5000**.
 

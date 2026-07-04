@@ -12,7 +12,7 @@ services:
       # Dossier a cote de ce fichier, contenant vos modeles
       # "Exemple ....xlsx" et (optionnel) "AR ....docx". Lecture seule :
       # le conteneur n'a pas besoin d'y ecrire.
-      - ./modeles:/app/modeles:ro
+      - ./modeles://app/modeles:ro
     security_opt:
       - no-new-privileges:true
     cap_drop:

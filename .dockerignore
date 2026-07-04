@@ -5,10 +5,12 @@ web_runs/**
 releves_generes/**
 modeles/
 
-# Modeles Excel/Word (fournis par l'utilisateur au demarrage, montes en volume)
-Exemple*.xlsx
-AR*.docx
-PV*.xlsx
+# Tout fichier Excel/Word est exclu du build, ou qu'il se trouve dans le
+# projet : l'image n'en a jamais besoin (modeles fournis via un volume,
+# donnees d'entree deposees via l'upload web). Empeche toute donnee
+# personnelle d'etudiant de finir dans l'image, quel que soit son nom.
+*.xlsx
+*.docx
 
 # Git / IDE / outils Claude
 .git/

@@ -6,6 +6,12 @@ releves_generes/
 # Modele Excel/Word de l'etablissement, place ici pour Docker (voir README)
 modeles/
 
+# Tout fichier Excel/Word a la racine (PV, listes d'etudiants, modeles...)
+# contient potentiellement de vraies donnees personnelles : jamais suivi
+# par git, quel que soit son nom.
+*.xlsx
+*.docx
+
 # Python
 __pycache__/
 *.pyc

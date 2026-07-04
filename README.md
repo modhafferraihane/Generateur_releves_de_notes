@@ -112,16 +112,34 @@ Python directement sur votre ordinateur.
    en haut de la page : un badge **🐳 Docker** apparaît à côté de "100%
    automatique" uniquement dans la version conteneurisée.
 
+### Autre possibilité : utiliser l'image déjà prête sur Docker Hub
+
+Pas besoin de télécharger tout le projet ni de le construire vous-même :
+vous pouvez lancer directement l'image publiée sur Docker Hub.
+
+1. Créez un dossier vide (par exemple `generateur-releves`), et dedans un
+   dossier **modeles** contenant votre fichier `Exemple ... .xlsx` (et
+   `AR ... .docx` si vous en avez un).
+2. Ouvrez un terminal dans ce dossier et lancez :
+
+   ```
+   docker run -d --name generateur-releves --restart unless-stopped -p 127.0.0.1:5000:5000 -v ./modeles:/app/modeles:ro -v releves_data:/app/web_runs modovar/generateur-releves:1.0
+   ```
+
+3. Ouvrez votre navigateur sur **http://127.0.0.1:5000**.
+
 ### Arrêter / relancer
 
-- Pour arrêter : `docker compose down`
-- Pour relancer plus tard : `docker compose up -d` (sans `--build`, c'est
-  plus rapide ; utilisez `--build` uniquement si vous avez retéléchargé une
-  nouvelle version du projet)
+- Avec `docker compose` : `docker compose down` pour arrêter, puis
+  `docker compose up -d` pour relancer (sans `--build`, c'est plus rapide ;
+  utilisez `--build` uniquement si vous avez retéléchargé une nouvelle
+  version du projet).
+- Avec l'image Docker Hub (`docker run`) : `docker stop generateur-releves`
+  pour arrêter, `docker start generateur-releves` pour relancer.
 - Si le site ne démarre pas ou que le badge **🐳 Docker** n'apparaît pas :
   une autre copie du programme (installation classique) tourne peut-être
   déjà sur le port 5000. Fermez-la (voir section "Utilisation" ci-dessus)
-  avant de relancer `docker compose up -d`.
+  avant de relancer.
 
 ### À savoir
 

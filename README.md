@@ -13,122 +13,80 @@ avec toutes les notes). Plus besoin de les remplir un par un à la main.
 
 ## Installation (à faire une seule fois)
 
-Ouvrez le menu Démarrer, tapez **PowerShell**, et ouvrez-le.
-
-Copiez-collez cette ligne, puis appuyez sur Entrée :
+Ouvrez le menu Démarrer, tapez **PowerShell**, ouvrez-le, puis
+copiez-collez cette ligne et appuyez sur Entrée :
 
 ```powershell
 irm https://raw.githubusercontent.com/modhafferraihane/Generateur_releves_de_notes/main/install.ps1 | iex
 ```
 
 C'est tout : le programme s'installe tout seul (y compris Python si besoin)
-et se lance automatiquement dans votre navigateur à la fin. Une icône
-**"Generateur de releves de notes"** est créée sur le Bureau pour le
-relancer facilement la prochaine fois.
+et se lance dans votre navigateur à la fin. Une icône **"Generateur de
+releves de notes"** est créée sur le Bureau pour le relancer plus tard.
 
-> Si une fenêtre Windows demande une autorisation, acceptez-la.
-> L'installation peut prendre quelques minutes la première fois.
+> Acceptez toute demande d'autorisation Windows. L'installation peut
+> prendre quelques minutes la première fois.
 
 ## Utilisation
 
-1. Double-cliquez sur l'icône **"Generateur de releves de notes"** sur le
-   Bureau (ou relancez la commande d'installation ci-dessus).
+1. Double-cliquez sur l'icône du Bureau (ou relancez la commande
+   d'installation ci-dessus).
+2. Le site s'ouvre sur **http://127.0.0.1:5000**.
+3. Choisissez la filière, puis le niveau.
+4. Déposez le PV de délibération (et le fichier des coordonnées des
+   étudiants si vous l'avez, pour compléter date de naissance et CIN).
+5. Cochez "Générer aussi les PDF" si besoin.
+6. Cliquez sur "Générer les relevés", puis téléchargez les fichiers (un par
+   un ou tous d'un coup via "Télécharger tout (ZIP)").
 
-2. Le site s'ouvre automatiquement dans votre navigateur sur
-   **http://127.0.0.1:5000**
-
-3. Choisissez la filière, puis le niveau (1ère, 2ème, 3ème année...).
-
-4. Déposez le PV de délibération. Si vous avez aussi le fichier des
-   coordonnées des étudiants, déposez-le également : il sert à compléter
-   automatiquement la date de naissance et le numéro de CIN.
-
-5. Cochez la case "Générer aussi les PDF" si vous voulez des versions
-   prêtes à imprimer.
-
-6. Cliquez sur "Générer les relevés".
-
-7. Téléchargez les fichiers un par un, ou tous d'un coup avec le bouton
-   "Télécharger tout (ZIP)".
-
-Pour arrêter le programme : fermez la fenêtre noire qui s'est ouverte avec
-lui.
+Pour arrêter : fermez la fenêtre noire ouverte avec le programme.
 
 ## À savoir
 
 - La mention du jury (Admis, Assez Bien...) n'est pas remplie
   automatiquement : à ajouter vous-même après génération.
-- La date de naissance et le CIN ne sont remplis que si vous fournissez le
-  fichier des coordonnées des étudiants.
+- Date de naissance et CIN ne sont remplis que si le fichier des
+  coordonnées des étudiants est fourni.
 
 ## En cas de problème
 
-- **L'installation affiche une erreur la première fois** : fermez
-  PowerShell, rouvrez-le, et relancez la commande d'installation une
-  deuxième fois (Python a parfois besoin d'un redémarrage de la fenêtre
-  pour être détecté juste après son installation).
-- **L'export PDF échoue** : vérifiez que Microsoft Excel n'a pas de fenêtre
-  ouverte avec un message en attente, fermez-la et réessayez.
+- **Erreur à la première installation** : fermez PowerShell, rouvrez-le, et
+  relancez la commande une deuxième fois (Python a parfois besoin d'un
+  redémarrage pour être détecté juste après son installation).
+- **L'export PDF échoue** : fermez toute fenêtre Excel avec un message en
+  attente, puis réessayez.
 
-## Autre façon d'installer : avec Docker (optionnel)
+## Autre façon d'installer : avec Docker
 
-Cette méthode est une alternative à l'installation ci-dessus. Elle est
-utile si vous êtes sur Mac ou Linux, ou si vous préférez ne pas installer
-Python directement sur votre ordinateur.
+Alternative utile sur Mac/Linux, ou pour ne pas installer Python
+directement sur votre ordinateur.
 
-> ⚠️ Avec Docker, la case "Générer aussi les PDF" ne fonctionnera pas : cette
-> option a besoin de Microsoft Excel installé sur Windows. Si vous avez
-> besoin des PDF, utilisez l'installation classique ci-dessus.
+> ⚠️ Avec Docker, l'export PDF ne fonctionne pas (il nécessite Excel sur
+> Windows) : utilisez l'installation classique ci-dessus si vous en avez
+> besoin.
 
-### Ce qu'il vous faut
+Il vous faut [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+installé et lancé, ainsi que le fichier modèle de votre établissement
+(`Exemple ... .xlsx`, et `AR ... .docx` si vous en avez un).
 
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installé
-  et lancé.
-- Le fichier modèle fourni par votre établissement (son nom commence par
-  `Exemple` et finit par `.xlsx`), et éventuellement le fichier
-  d'attestation (nom commençant par `AR` et finissant par `.docx`).
-
-### Installation et démarrage
-
-Pas besoin de télécharger le projet : vous pouvez lancer directement
-l'image publiée sur Docker Hub.
-
-1. Ouvrez un terminal (PowerShell recommandé) dans un dossier contenant un
-   sous-dossier **modeles** avec votre fichier `Exemple ... .xlsx` (et
-   `AR ... .docx` si vous en avez un), puis lancez :
+1. Dans un dossier de votre choix, créez un sous-dossier **modeles** et
+   mettez-y votre fichier modèle.
+2. Ouvrez un terminal (PowerShell recommandé) dans ce dossier et lancez :
 
    ```
    docker run -d --name generateur-releves -p 127.0.0.1:5000:5000 -v ./modeles://app/modeles:ro modovar/generateur-releves:1.0
    ```
 
-   > Le double `//` avant `app/modeles` est volontaire : ça évite un bug
-   > connu de Git Bash qui déforme sinon ce chemin et empêche le conteneur
-   > de trouver votre fichier modèle.
+   > Le double `//` avant `app/modeles` est volontaire (bug connu de Git
+   > Bash sinon).
 
-2. Ouvrez votre navigateur sur **http://127.0.0.1:5000** : le site
-   fonctionne exactement comme dans le reste de ce README.
+3. Ouvrez **http://127.0.0.1:5000** — un badge **🐳 Docker** confirme que
+   c'est bien cette version qui tourne.
 
-   Pour être sûr·e que c'est bien la version Docker qui s'affiche (et pas
-   une autre copie du programme déjà lancée sur votre ordinateur), regardez
-   en haut de la page : un badge **🐳 Docker** apparaît à côté de "100%
-   automatique" uniquement dans la version conteneurisée.
+Pour arrêter/relancer : `docker stop generateur-releves` /
+`docker start generateur-releves`. Si vous mettez à jour le fichier
+modèle, faites `docker restart generateur-releves`.
 
-### Arrêter / relancer
-
-- `docker stop generateur-releves` pour arrêter, `docker start
-  generateur-releves` pour relancer.
-- Si le site ne démarre pas ou que le badge **🐳 Docker** n'apparaît pas :
-  une autre copie du programme (installation classique) tourne peut-être
-  déjà sur le port 5000. Fermez-la (voir section "Utilisation" ci-dessus)
-  avant de relancer.
-
-### À savoir
-
-- Téléchargez toujours vos fichiers générés tout de suite avec les boutons
-  du site : ils ne sont pas conservés ailleurs. `docker rm` (après
-  `docker stop`) efface le conteneur et tout ce qui a été généré avec —
-  volontairement, pour ne garder aucune donnée d'étudiant qui traîne une
-  fois que vous avez récupéré vos fichiers.
-- Si vous mettez à jour votre fichier modèle dans le dossier `modeles`,
-  relancez le conteneur (`docker restart generateur-releves`) pour que le
-  changement soit pris en compte.
+Vos fichiers générés ne sont pas conservés ailleurs : téléchargez-les tout
+de suite. Supprimer le conteneur (`docker rm`) efface tout, volontairement,
+pour ne garder aucune donnée d'étudiant.

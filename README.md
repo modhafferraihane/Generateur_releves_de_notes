@@ -90,36 +90,8 @@ Python directement sur votre ordinateur.
 
 ### Installation et démarrage
 
-1. Téléchargez ce projet : bouton vert **Code** puis **Download ZIP** sur la
-   page GitHub du projet, et dézippez-le où vous voulez.
-2. Dans le dossier obtenu, créez un nouveau dossier nommé **modeles**.
-3. Mettez-y votre fichier `Exemple ... .xlsx` (et `AR ... .docx` si vous en
-   avez un).
-4. Ouvrez **PowerShell** dans ce dossier (clic droit dans le dossier >
-   **Ouvrir dans le terminal**) et lancez :
-
-   ```
-   docker compose up -d --build
-   ```
-
-   > ⚠️ Utilisez bien PowerShell, pas Git Bash : avec Git Bash, la commande
-   > peut mal interpréter les chemins et empêcher le conteneur de trouver
-   > votre fichier modèle.
-
-   La toute première fois, cela peut prendre quelques minutes (Docker
-   télécharge et prépare tout).
-5. Ouvrez votre navigateur sur **http://127.0.0.1:5000** : le site
-   fonctionne exactement comme dans le reste de ce README.
-
-   Pour être sûr·e que c'est bien la version Docker qui s'affiche (et pas
-   une autre copie du programme déjà lancée sur votre ordinateur), regardez
-   en haut de la page : un badge **🐳 Docker** apparaît à côté de "100%
-   automatique" uniquement dans la version conteneurisée.
-
-### Autre possibilité : utiliser l'image déjà prête sur Docker Hub
-
-Pas besoin de télécharger tout le projet ni de le construire vous-même :
-vous pouvez lancer directement l'image publiée sur Docker Hub.
+Pas besoin de télécharger le projet : vous pouvez lancer directement
+l'image publiée sur Docker Hub.
 
 1. Créez un dossier vide (par exemple `generateur-releves`), et dedans un
    dossier **modeles** contenant votre fichier `Exemple ... .xlsx` (et
@@ -134,16 +106,18 @@ vous pouvez lancer directement l'image publiée sur Docker Hub.
    > connu de Git Bash qui déforme sinon ce chemin et empêche le conteneur
    > de trouver votre fichier modèle.
 
-3. Ouvrez votre navigateur sur **http://127.0.0.1:5000**.
+3. Ouvrez votre navigateur sur **http://127.0.0.1:5000** : le site
+   fonctionne exactement comme dans le reste de ce README.
+
+   Pour être sûr·e que c'est bien la version Docker qui s'affiche (et pas
+   une autre copie du programme déjà lancée sur votre ordinateur), regardez
+   en haut de la page : un badge **🐳 Docker** apparaît à côté de "100%
+   automatique" uniquement dans la version conteneurisée.
 
 ### Arrêter / relancer
 
-- Avec `docker compose` : `docker compose down` pour arrêter, puis
-  `docker compose up -d` pour relancer (sans `--build`, c'est plus rapide ;
-  utilisez `--build` uniquement si vous avez retéléchargé une nouvelle
-  version du projet).
-- Avec l'image Docker Hub (`docker run`) : `docker stop generateur-releves`
-  pour arrêter, `docker start generateur-releves` pour relancer.
+- `docker stop generateur-releves` pour arrêter, `docker start
+  generateur-releves` pour relancer.
 - Si le site ne démarre pas ou que le badge **🐳 Docker** n'apparaît pas :
   une autre copie du programme (installation classique) tourne peut-être
   déjà sur le port 5000. Fermez-la (voir section "Utilisation" ci-dessus)
@@ -152,10 +126,10 @@ vous pouvez lancer directement l'image publiée sur Docker Hub.
 ### À savoir
 
 - Téléchargez toujours vos fichiers générés tout de suite avec les boutons
-  du site : ils ne sont pas conservés ailleurs. `docker compose down` (ou
-  `docker rm`) efface le conteneur et tout ce qui a été généré avec —
+  du site : ils ne sont pas conservés ailleurs. `docker rm` (après
+  `docker stop`) efface le conteneur et tout ce qui a été généré avec —
   volontairement, pour ne garder aucune donnée d'étudiant qui traîne une
   fois que vous avez récupéré vos fichiers.
 - Si vous mettez à jour votre fichier modèle dans le dossier `modeles`,
-  relancez avec `docker compose up -d` pour que le changement soit pris en
-  compte.
+  relancez le conteneur (`docker restart generateur-releves`) pour que le
+  changement soit pris en compte.

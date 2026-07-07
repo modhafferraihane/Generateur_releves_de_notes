@@ -68,7 +68,7 @@ ressources, comme on le voit dans Docker Desktop :
 > Windows) : utilisez l'installation classique ci-dessus si vous en avez
 > besoin.
 
-Il vous faut [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+Il vous faut [Docker Desktop](https://docs.docker.com/desktop/setup/install/windows-install/)
 installé et lancé, ainsi que le fichier modèle de votre établissement
 (`Exemple ... .xlsx`, et `AR ... .docx` si vous en avez un).
 

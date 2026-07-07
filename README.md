@@ -93,10 +93,9 @@ Python directement sur votre ordinateur.
 Pas besoin de télécharger le projet : vous pouvez lancer directement
 l'image publiée sur Docker Hub.
 
-1. Créez un dossier vide (par exemple `generateur-releves`), et dedans un
-   dossier **modeles** contenant votre fichier `Exemple ... .xlsx` (et
-   `AR ... .docx` si vous en avez un).
-2. Ouvrez un terminal dans ce dossier (PowerShell recommandé) et lancez :
+1. Ouvrez un terminal (PowerShell recommandé) dans un dossier contenant un
+   sous-dossier **modeles** avec votre fichier `Exemple ... .xlsx` (et
+   `AR ... .docx` si vous en avez un), puis lancez :
 
    ```
    docker run -d --name generateur-releves -p 127.0.0.1:5000:5000 -v ./modeles://app/modeles:ro modovar/generateur-releves:1.0
@@ -106,7 +105,7 @@ l'image publiée sur Docker Hub.
    > connu de Git Bash qui déforme sinon ce chemin et empêche le conteneur
    > de trouver votre fichier modèle.
 
-3. Ouvrez votre navigateur sur **http://127.0.0.1:5000** : le site
+2. Ouvrez votre navigateur sur **http://127.0.0.1:5000** : le site
    fonctionne exactement comme dans le reste de ce README.
 
    Pour être sûr·e que c'est bien la version Docker qui s'affiche (et pas

@@ -59,7 +59,10 @@ Pour arrêter : fermez la fenêtre noire ouverte avec le programme.
 ## Autre façon d'installer : avec Docker
 
 Alternative utile sur Mac/Linux, ou pour ne pas installer Python
-directement sur votre ordinateur.
+directement sur votre ordinateur. Le conteneur consomme très peu de
+ressources, comme on le voit dans Docker Desktop :
+
+![Conteneur tournant avec peu de ressources dans Docker Desktop](pic/dockerDesktop.png)
 
 > ⚠️ Avec Docker, l'export PDF ne fonctionne pas (il nécessite Excel sur
 > Windows) : utilisez l'installation classique ci-dessus si vous en avez

@@ -18,6 +18,13 @@ RUN pip install --no-cache-dir --upgrade pip \
 # --- Etape 2 : image finale, minimale --------------------------------------
 FROM python:3.12-slim-bookworm
 
+# Metadonnees de l'image (norme OCI). Version 2 : le parseur gere desormais
+# aussi les PV a semestres cote a cote decales d'une ligne (ex. "L2 Reseaux"),
+# en plus du format d'origine (un seul tableau).
+LABEL org.opencontainers.image.title="Generateur de releves de notes" \
+      org.opencontainers.image.description="Genere un releve de notes .xlsx par etudiant a partir d'un PV de deliberation." \
+      org.opencontainers.image.version="2.0"
+
 # Mises a jour de securite du systeme de base uniquement (pas d'installation
 # de paquets supplementaires : l'image reste minimale).
 RUN apt-get update \

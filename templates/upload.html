@@ -72,6 +72,21 @@
           </label>
         </div>
 
+        <div class="field-grid">
+          <div class="field-cell">
+            <label class="field-label" for="annee_universitaire">Année universitaire</label>
+            <select name="annee_universitaire" id="annee_universitaire" class="select-field" required>
+              {% for a in annees %}
+                <option value="{{ a }}" {% if a == annee_defaut %}selected{% endif %}>{{ a }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field-cell">
+            <label class="field-label" for="date_remplissage">Date de remplissage</label>
+            <input type="date" name="date_remplissage" id="date_remplissage" class="select-field" value="{{ date_defaut }}" required>
+          </div>
+        </div>
+
         <label class="toggle-row">
           <input type="checkbox" name="make_pdf" id="make_pdf">
           <span class="toggle-text">

@@ -559,6 +559,297 @@ via gunicorn). L'étape était donc entièrement redondante.
   `docker compose stop`/`start`). Comportement assumé et documenté, pas une
   régression.
 
+## Étape 12 — Validation d'un 2e format réel de PV + image Docker v2
+
+**Besoin :** l'utilisateur voulait vérifier que l'app sait aussi récolter les
+notes d'un PV « un peu différent » au niveau de l'alignement des lignes (le
+fichier `L2 Réseaux.xlsx` ajouté au projet), puis versionner l'image Docker
+en v2.
+
+**Ce qui est différent dans `L2 Réseaux.xlsx` :**
+- Feuille nommée `Feuil1` (et non `PV_Deliberation`) → déjà géré (repli sur
+  la 1ère feuille dans `parse_pv`).
+- Surtout : les deux semestres sont **côte à côte mais décalés d'une ligne** —
+  les marqueurs « Moyenne UE » du Semestre 1 sont sur la ligne 12, ceux du
+  Semestre 2 sur la ligne 13. C'est précisément le cas que le parseur par
+  blocs (`_build_ues` / `parse_pv`, regroupement par `ecue_row` puis fusion
+  des étudiants par nom) a été conçu pour absorber.
+
+**Validé (sans aucune modification du parseur) :** 12 UE détectées (6 en S1
++ 6 en S2) avec ECUE/coefficients/crédits, 10 étudiants lus avec leurs notes
+des deux semestres, génération complète des 10 relevés, 0 avertissement.
+Contenu d'un relevé vérifié cellule par cellule (UE S1 en « S1 », UE S2 en
+« S2 », notes CC/EX/Moy, crédits capitalisés, V/C, TOTAL 30 coef / 60
+crédits, Moyenne Annuelle et total des crédits capitalisés cohérents).
+C'est la **1ère filière autre que Big Data** validée de bout en bout avec de
+vraies données (filière RSYS, « Ingénierie des Systèmes et Réseaux », L2).
+
+**Réserve constatée (pas un bug de mise en page) :** « Année universitaire »
+reste vide car le nom `L2 Réseaux.xlsx` ne contient pas de code d'année (ex.
+`AU24-25`) — `parse_filename_meta` lit l'année depuis le nom du fichier.
+Même comportement dans l'app web. Piste si besoin plus tard : champ « année »
+dans le formulaire, ou lecture de l'année depuis l'en-tête du PV.
+
+**Image Docker v2 :**
+- `Dockerfile` : ajout des labels OCI dans l'étape image finale
+  (`org.opencontainers.image.title` / `.description` / `.version="2.0"`).
+- `docker-compose.yml` : tag de l'image `generateur-releves:latest` →
+  `generateur-releves:2.0`.
+- Validé de bout en bout : `docker build` OK, label `version=2.0` confirmé
+  (`docker inspect ... .Config.Labels`), conteneur recréé et `healthy`, page
+  d'accueil HTTP 200. À noter : un ancien conteneur tournait encore depuis
+  l'image `modovar/generateur-releves:1.0` (la v1 publiée sur Docker Hub sous
+  le compte `modovar`) — il a fallu le retirer (`docker rm -f`) car il n'était
+  pas géré par ce `docker-compose.yml` (conflit de nom de conteneur).
+- **Reste à faire si publication voulue :** le tag local est
+  `generateur-releves:2.0` ; pour pousser sur Docker Hub il faudra le retaguer
+  `modovar/generateur-releves:2.0` (`docker tag` + `docker push`).
+
+## Étape 13 — Gabarit embarqué dans l'image (conteneur autonome, `docker run` sans volume)
+
+**Incident (remonté par l'utilisateur) :** conteneur v2 lancé par un simple
+`docker run generateur-releves:2.0` (sans `-v ./modeles:...`) → crash en
+boucle avec `Fichier modele introuvable : placez un fichier 'Exemple ....xlsx'
+dans /app/modeles`. Diagnostic (`docker ps -a` + `docker logs`) : conteneur
+`Exited (1)`, nom auto `tender_carson` (donc lancé sans les options du
+compose). Cause racine : le gabarit `Exemple*.xlsx` vivait **hors de l'image**
+(exclu par `.dockerignore` : `modeles/` + `*.xlsx`) et devait être fourni par
+un volume ; sans montage, `app.py` ne trouve aucun gabarit au démarrage et
+`SystemExit`. C'était donc la 3e occurrence d'un problème de montage (cf.
+étapes 10, 11).
+
+**Découverte importante pendant le correctif :** le fichier
+`modeles/Exemple Relevé de Notes.xlsx` n'était **pas un gabarit vierge** — il
+contenait les **données personnelles réelles** d'une étudiante (nom en clair,
+date/lieu de naissance, N° CIN, et son nom servait même de **nom d'onglet**),
+plus des notes. C'est exactement ce que l'étape 11 voulait empêcher de fuiter.
+D'où le choix initial de le garder hors de l'image — mais au prix d'un
+conteneur fragile.
+
+**Décision : rendre l'image autonome, sans réintroduire de PII.**
+- **Anonymisation du gabarit** (`modeles/Exemple Relevé de Notes.xlsx`, en
+  place ; original sauvegardé hors dépôt) : onglet renommé `Modele`, `D9`
+  (nom) → placeholder « Prénom NOM », `D10` (naissance) et `D11` (CIN)
+  vidées, mention nominative (`C48`) vidée. Ces cellules sont de toute façon
+  réécrites/laissées vides par `app.py` à la génération → aucun impact sur la
+  sortie. Styles/fusions intacts (seules des valeurs effacées). Vérifié :
+  plus aucune occurrence de « Abessi/Nermine/09655192 » dans le fichier.
+- **`.dockerignore`** : on continue d'exclure tout `*.xlsx`/`*.docx` (les PV
+  réels à la racine ne doivent jamais entrer dans l'image), mais on
+  **ré-inclut** `!modeles/*.xlsx` / `!modeles/*.docx` (gabarits anonymisés).
+  La ligne `modeles/` est retirée (sinon la négation ne peut pas ré-inclure
+  un fichier d'un dossier exclu). Résultat : seul le gabarit anonymisé entre
+  dans l'image, pas les données étudiants.
+- **`docker-compose.yml`** : le volume `./modeles:/app/modeles:ro` devient
+  **optionnel** (override d'un gabarit personnalisé), commenté comme tel ;
+  double `//` corrigé en simple `/` (le bug Git Bash ne concerne que
+  `docker run -v`, pas le YAML compose).
+- **`README.md`** : section Docker réécrite — plus besoin de créer/monter un
+  dossier `modeles/`, `docker run ... modovar/generateur-releves:2.0` suffit ;
+  le montage de volume passe en encart « Modèle personnalisé (optionnel) ».
+
+**Validé de bout en bout (pas juste un démarrage) :**
+- Audit de l'image (`find / -iname "*.xlsx"`) : seuls `default.docx`
+  (librairie python-docx) et le gabarit `Modele` anonymisé ; aucun PV réel.
+  Recherche PII dans le gabarit embarqué → AUCUNE.
+- `docker run` **sans volume** (le scénario qui plantait) : conteneur
+  `running`, page d'accueil HTTP 200, aucun `Fichier modele introuvable`.
+- `POST /generate` réel via le conteneur autonome avec le PV `L2 Réseaux.xlsx`
+  (filière RSYS, L2) : **10 relevés générés**, noms corrects écrits par-dessus
+  le placeholder, ZIP téléchargé (`/download/.../releves.zip`, 105 799 octets,
+  10 fichiers).
+- Voie `docker compose up` toujours fonctionnelle (monte `modeles/` en
+  override) : HTTP 200, `healthy`, un seul mount actif.
+
+**Reste à faire si publication voulue :** re-taguer et pousser
+`modovar/generateur-releves:2.0` sur Docker Hub (`docker tag` + `docker push`)
+— le README pointe déjà vers ce tag.
+
+## Étape 14 — Correctif : PV dont un semestre entier n'est pas fusionné (S2 ignoré)
+
+**Incident (remonté par l'utilisateur) :** « il y a 8 matières au S1 et 13 au
+S2, il ne prend pas celles du S2 ». Le relevé généré ne contenait que le
+Semestre 1.
+
+**Diagnostic :** le fichier réellement en cause n'était PAS l'échantillon
+`L2 Réseaux.xlsx` du projet (qui, lui, fonctionne). Retrouvé dans le conteneur
+sous `web_runs/<batch>/L2_Reseaux.xlsx` (l'utilisateur l'avait uploadé via le
+site) — un fichier **différent** (md5/taille différents). En comparant sa
+structure de fusions à celle de l'échantillon :
+- Échantillon projet : les 12 cellules « Moyenne UE » (S1 **et** S2) sont
+  fusionnées → toutes détectées.
+- Fichier utilisateur : **tout le Semestre 2 est en cellules simples** (non
+  fusionnées) — noms d'UE, noms d'ECUE, « Moyenne UE », « Crédits
+  Capitalisés », et même « Moyenne Semestre 2 ». Seul le S1 était fusionné.
+
+Or le parseur par blocs reperait tout via les **cellules fusionnées** :
+`_ue_markers` (marqueurs « Moyenne UE »), la détection des ECUE, et
+`_semester_boundaries` ne regardaient que `ws.merged_cells.ranges`. Résultat :
+les 6 UE / 13 ECUE du S2 étaient purement et simplement ignorées.
+
+**Correctif (`generate_releves.py`) — parseur rendu insensible aux fusions :**
+- `_ue_markers` et `_semester_boundaries` : balaient désormais les **valeurs**
+  des cellules de la zone d'en-tête (30 premières lignes) au lieu des seules
+  fusions. Un « Moyenne UE » fusionné n'ayant sa valeur que sur sa cellule
+  d'ancrage, ce balayage ne crée pas de doublon.
+- `_build_ues` : les ECUE d'une UE ne sont plus lues comme des *merges* mais
+  reconstruites par **géométrie** : chaque ECUE occupe exactement 4 colonnes
+  (constante `ECUE_WIDTH`) et la dernière finit juste avant « Moyenne UE » ; on
+  remonte donc de 4 en 4 depuis la colonne « Moyenne UE » jusqu'à la fin de
+  l'UE précédente, en s'arrêtant sur une cellule vide ou un intitulé de
+  synthèse (`_is_summary_header`, garde contre les colonnes de récap non
+  fusionnées intercalées à la frontière de semestre).
+
+**Validé (parse + génération + conteneur), sans régression :**
+- Parse : fichier utilisateur → **12 UE (S1 6 / S2 6), 25 ECUE, 10 étudiants**
+  (avant : S1 seul). Échantillon L2, L1 BIG DATA, L1 GLSI : inchangés.
+- Génération des 4 fichiers : S1 **et** S2 présents, ligne TOTAL, 0 warning.
+- Bout en bout via le conteneur Docker reconstruit, avec le fichier exact de
+  l'utilisateur : `POST /generate` 200, 10 relevés, un relevé vérifié à
+  **S1 = 12 ECUE / S2 = 13 ECUE**, moyenne annuelle recalculée, ZIP 105 801 o.
+
+**Remarque :** garder en tête que les PV « faits main » peuvent être
+partiellement fusionnés. Le parseur ne dépend plus des fusions pour la
+structure ; il suppose seulement la géométrie régulière à 4 colonnes par ECUE
+(déjà supposée partout ailleurs pour écrire les notes CC/EX/Moy/Cr).
+
+## Étape 15 — Saisie de l'année universitaire et de la date de remplissage
+
+**Besoin :** l'année universitaire manquait sur les relevés quand le nom du PV
+ne contenait pas de code d'année (ex. `L2 Réseaux.xlsx`, pas de `AU25-26`). Au
+lieu de dépendre du nom de fichier, l'utilisateur voulait deux champs à
+remplir au moment de la génération : l'**année universitaire** et la **date de
+remplissage** (le « Fait à Tunis : ... » en bas du relevé).
+
+**Réalisé :**
+- `generate_releves.py` :
+  - Helpers `current_academic_year()` / `academic_year_choices()` (une AU
+    commence en septembre : de janvier à juillet on est encore dans l'AU
+    ouverte l'année civile précédente). La liste proposée est centrée sur
+    l'année en cours (2 ans en arrière + 1 en avant), la plus récente d'abord.
+  - `generate_all(..., annee_universitaire=None, date_remplissage=None)` : si
+    fournis, ils priment ; sinon l'année retombe sur la détection par nom de
+    fichier et la date reste celle du gabarit. Les deux passent par `meta`.
+  - `fill_releve` écrit `Fait à Tunis : <date>` en `N{moyenne_row}` (cellule
+    simple N42 du gabarit, décalée du `diff` du bloc UE dynamique) — seulement
+    si une date est fournie. L'année remplit déjà `L8` et la colonne `T`
+    (Ann.U) de chaque UE.
+- `app.py` : lecture de `annee_universitaire` et `date_remplissage` du
+  formulaire ; helper `format_date_fr` convertit la date HTML `AAAA-MM-JJ` en
+  `JJ/MM/AAAA`. La route `/upload` fournit au template la liste des années, le
+  défaut (année en cours) et la date du jour.
+- `templates/upload.html` : deux champs côte à côte (grille `.field-grid`) —
+  `<select>` année universitaire (défaut = année en cours) et `<input
+  type="date">` date de remplissage (défaut = aujourd'hui), tous deux requis.
+- `static/style.css` : `.field-grid` (2 colonnes, 1 colonne < 480 px).
+
+**Validé de bout en bout via le conteneur Docker reconstruit :** `GET /upload`
+rend les deux champs (année « 2025-2026 » présélectionnée, date du jour
+pré-remplie) ; `POST /generate` avec année=2025-2026 et date=2026-07-15 →
+relevé avec `L8`=« Année universitaire : 2025-2026 », colonne Ann.U=2025-2026,
+et « Fait à Tunis : 15/07/2026 ».
+
+**Note :** le lieu « Tunis » reste codé en dur (contexte de l'établissement).
+À transformer en champ si un autre lieu devient nécessaire.
+
+## Étape 16 — Diplôme national en année terminale (L3 / M2)
+
+**Besoin :** en année finale (3e année de Licence ou 2e année de Mastère),
+générer aussi un **diplôme national (.docx)** par étudiant, en remplissant tous
+les champs, à partir des exemples fournis `Diplome_Amine_Riahi.docx` (licence)
+et `Diplome_Ahmed_ABBOUR.docx` (mastère).
+
+**Décisions (validées avec l'utilisateur) :**
+- Mastère : l'utilisateur fournit un modèle mastère distinct → sélection du
+  modèle **par cycle** (licence vs mastère), pas d'adaptation forcée d'un
+  modèle licence (les décrets cités diffèrent).
+- Mention d'honneur calculée depuis la **moyenne annuelle** (≥16 Très Bien,
+  ≥14 Bien, ≥12 Assez Bien, ≥10 Passable, sinon vide) — `mention_from_average`.
+
+**Structure des .docx de diplôme (piège) :** le texte vit dans des **zones de
+texte** (python-docx ne l'expose pas via `doc.paragraphs`), **dupliquées**
+(Choice/Fallback, d'où chaque ligne en double + un « méga-run » à plat), et les
+valeurs sont **éclatées sur de nombreux runs** (la date `12/01/1998` en 6 runs,
+la mention en `Assez `+`Bien`, etc.). On ne peut pas remplir de façon fiable
+par simple recherche/remplacement.
+
+**Solution : modèles à « placeholders » anonymisés.** Scripts de templatisation
+(one-shot) qui transforment les exemples en `modeles/Diplome Licence.docx` et
+`modeles/Diplome Mastere.docx` : chaque valeur variable → un jeton `[[NOM]]`,
+`[[NAISSANCE_DATE]]`, `[[NAISSANCE_LIEU]]`, `[[CIN]]`, `[[ANNEE]]`,
+`[[DOMAINE]]`, `[[MENTION]]`, `[[SPECIALITE]]`, `[[HONNEUR]]`, `[[DATE]]`
+(remplacement contigu pour les méga-runs + collapse de séquences de runs pour
+les valeurs éclatées). Ça **anonymise** aussi le modèle (aucune PII étudiant →
+embarquable dans l'image, cf. étapes 11/13). Pour le mastère, les moyennes par
+semestre / crédits / date de soutenance sont **vidées** (saisie manuelle : le
+PV de M2 ne couvre pas la 1re année).
+
+**Réalisé :**
+- `generate_diplome.py` : `fill_diplome(...)` remplace les jetons dans **tous**
+  les runs du document (zones de texte comprises), formate la date de
+  naissance et met l'année au format `AAAA/AAAA`.
+- `generate_releves.py` : constante `FINAL_YEARS = {"L3","M2"}`,
+  `mention_from_average()`, `filiere` ajouté à `meta`, et
+  `generate_all(..., diplome_templates=None)` — dict `{cycle: chemin}`. En année
+  terminale, si le modèle du cycle existe : un `Diplome_<nom>.docx` par
+  étudiant ; sinon un avertissement « aucun modèle <cycle> fourni ». Avert.
+  aussi si moyenne < 10 (diplôme généré sans mention, à écarter si non admis).
+- `app.py` : `DIPLOME_TEMPLATES = {"Licence": glob "Diplome*Licence*.docx",
+  "Mastère": glob "Diplome*Mast*.docx"}` (dans le dossier des modèles), passé à
+  `generate_all` ; `diplome_by_xlsx` transmis au template résultat.
+- `templates/result.html` : colonne « Diplôme » avec lien de téléchargement.
+- `.dockerignore` inclut déjà `!modeles/*.docx` → les deux modèles anonymisés
+  sont embarqués dans l'image (vérifié). Les exemples bruts à la racine
+  (`Diplome_*_*.docx`, avec PII) restent exclus de l'image.
+
+**Validé de bout en bout via le conteneur reconstruit :**
+- L3 (RSYS) : 10 diplômes **licence**, type « licence », « Fait à Tunis :
+  15/07/2026 » rempli, colonne Diplôme affichée, aucun jeton résiduel.
+- M2 (Cyber) : 10 diplômes **mastère**, type « master », libellés des moyennes
+  conservés (valeurs à compléter), aucun jeton résiduel.
+- `fill_diplome` direct : nom, date/lieu de naissance, CIN, année (`2025/2026`),
+  spécialité, mention d'honneur (« Assez Bien » depuis 13.4), date — tous OK.
+
+**Limites / à savoir :**
+- Mastère : moyennes S1–S4, crédits et date de soutenance restent manuels.
+- La correspondance « Mention » (LMD) ← `filiere` du PV est un choix
+  par défaut (best-effort) ; à ajuster si l'intitulé exact diffère.
+- Lieu « Tunis » codé en dur dans « Fait à Tunis ».
+
+## Étape 17 — Diplôme : civilité selon le sexe (Mme/M., Née/Né) + mentions vérifiées
+
+**Besoin :** sur le diplôme, écrire « Mme » (au lieu de « M. ») pour les
+étudiantes ; vérifier la zone « Mention » du diplôme licence et que la mention
+est bien remplie.
+
+**Source du genre (trouvée) :** le fichier de coordonnées a une colonne **D
+« الجنس » (sexe)** avec les valeurs **« Femme » / « Homme »** — jusque-là
+ignorée par le parseur (qui lit B,C,E,F,G,H). `parse_student_coordinates` lit
+désormais aussi la colonne 4 → clé `sexe`. Helper `civilite_from_sexe(sexe)` →
+`("Mme","Née")` si le sexe commence par « F », sinon `("M.","Né")` (défaut
+masculin si l'info manque).
+
+**Réalisé :**
+- Templatisation des deux modèles : `À M.` → `À [[CIVILITE]]` et `Né le` →
+  `[[NE]] le` (donc civilité ET accord « Né/Née » pilotés par le sexe).
+- `generate_diplome.fill_diplome(..., civilite="M.", ne="Né", ...)` remplit
+  `[[CIVILITE]]` et `[[NE]]`.
+- `generate_all` calcule `civilite, ne = civilite_from_sexe(coords["sexe"])`
+  par étudiant et les passe au diplôme.
+
+**Vérification des mentions (demande de l'utilisateur) :** les DEUX mentions du
+diplôme sont bien présentes et remplies, licence comme mastère :
+- `Mention : [[MENTION]]` (mention LMD) ← `filiere` du PV (best-effort).
+- `Avec la Mention : [[HONNEUR]]` (mention d'honneur) ← calculée depuis la
+  moyenne annuelle (`mention_from_average`).
+
+**Validé (chaîne réelle coords→civilité→diplôme, licence) :**
+- Belhadj Ali Mariem (Femme) → « À **Mme**  … », « **Née** le : 31/03/2001 à
+  Douz », « Mention : Informatique », « Avec la Mention : Assez Bien ».
+- Ben Ezzin Rayene (Homme) → « À **M.**  … », « **Né** le : … ».
+- E2E conteneur (L3 + M2) : diplômes générés, civilité + 2 mentions présentes,
+  aucun jeton résiduel. (Défaut « M. » quand aucune coordonnée ne correspond.)
+
 ## État actuel des règles métier (à respecter si on reprend le projet)
 
 - Sortie : un `.xlsx` (+ `.pdf` en option) + une attestation `.docx` par
@@ -590,12 +881,13 @@ via gunicorn). L'étape était donc entièrement redondante.
   manuellement à chaque étape.
 - Export PDF dépendant de Microsoft Excel installé localement (Windows
   uniquement, pas de fallback LibreOffice).
-- Seule la filière Big Data a été testée de bout en bout avec de vraies
-  données (PV + fichier de coordonnées). Les 4 autres filières (GLSI,
-  RSYS, Cloud, Cybersécurité) n'ont pas encore été essayées avec un vrai
-  PV — le moteur dynamique a été validé avec des structures UE/ECUE
-  synthétiques plus petites/plus grandes que l'exemple Big Data, mais pas
-  avec leurs PV réels.
+- Filières testées de bout en bout avec de vraies données : Big Data (PV +
+  fichier de coordonnées) et RSYS (« Ingénierie des Systèmes et Réseaux »,
+  PV `L2 Réseaux.xlsx`, semestres côte à côte décalés d'une ligne — étape
+  12, sans fichier de coordonnées). Les 3 autres filières (GLSI, Cloud,
+  Cybersécurité) n'ont pas encore été essayées avec un vrai PV — le moteur
+  dynamique a été validé avec des structures UE/ECUE synthétiques plus
+  petites/plus grandes que l'exemple Big Data, mais pas avec leurs PV réels.
 - Le niveau (L1/L2/L3/M1/M2) est choisi explicitement dans l'interface web
   (étape 7) ; côté CLI sans argument explicite, il reste déduit du nom du
   fichier PV (`parse_filename_meta`).

@@ -1,17 +1,20 @@
 services:
   releves:
     build: .
-    image: generateur-releves:latest
+    image: generateur-releves:2.0
     container_name: generateur-releves
     ports:
       # N'ecoute que sur localhost : l'appli n'est pas protegee par un mot
       # de passe, elle ne doit donc pas etre accessible depuis le reseau.
       - "127.0.0.1:5000:5000"
     volumes:
-      # Dossier a cote de ce fichier, contenant vos modeles
-      # "Exemple ....xlsx" et (optionnel) "AR ....docx". Lecture seule :
-      # le conteneur n'a pas besoin d'y ecrire.
-      - ./modeles://app/modeles:ro
+      # OPTIONNEL : le gabarit anonymise est deja embarque dans l'image, donc
+      # le conteneur demarre sans ce montage. Montez ce dossier seulement pour
+      # SURCHARGER le gabarit par le votre (ex. logo/etablissement different)
+      # sans reconstruire l'image. Lecture seule : le conteneur n'y ecrit pas.
+      # (En YAML compose, un seul "/" : le double "//" n'est utile qu'avec
+      # `docker run -v` lance depuis Git Bash.)
+      - ./modeles:/app/modeles:ro
     security_opt:
       - no-new-privileges:true
     cap_drop:

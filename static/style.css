@@ -300,6 +300,21 @@ h1 { font-size: 1.5rem; margin-top: 0; }
   box-shadow: 0 10px 24px -8px rgba(99, 102, 241, 0.3);
 }
 
+/* Deux champs cote a cote (annee universitaire + date de remplissage) */
+.field-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.field-grid .field-cell { min-width: 0; }
+.field-grid .select-field { margin-bottom: 0; }
+
+@media (max-width: 480px) {
+  .field-grid { grid-template-columns: 1fr; }
+}
+
 .footer-link.inline {
   display: inline-flex;
   margin: 0;

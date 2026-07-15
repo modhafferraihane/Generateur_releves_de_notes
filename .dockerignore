@@ -3,14 +3,21 @@ web_runs/
 releves_generes/
 web_runs/**
 releves_generes/**
-modeles/
 
 # Tout fichier Excel/Word est exclu du build, ou qu'il se trouve dans le
-# projet : l'image n'en a jamais besoin (modeles fournis via un volume,
-# donnees d'entree deposees via l'upload web). Empeche toute donnee
-# personnelle d'etudiant de finir dans l'image, quel que soit son nom.
+# projet (donnees d'entree deposees via l'upload web, PV reels a la racine).
+# Empeche toute donnee personnelle d'etudiant de finir dans l'image, quel que
+# soit son nom.
 *.xlsx
 *.docx
+
+# ...SAUF les gabarits vierges du dossier modeles/ (Exemple*.xlsx / AR*.docx),
+# dont l'app a besoin au demarrage : on les embarque dans l'image pour qu'un
+# simple `docker run` fonctionne sans montage de volume. Ces gabarits ne
+# contiennent aucune donnee d'etudiant (anonymises). Un volume monte sur
+# /app/modeles reste possible pour surcharger avec un gabarit personnalise.
+!modeles/*.xlsx
+!modeles/*.docx
 
 # Git / IDE / outils Claude
 .git/

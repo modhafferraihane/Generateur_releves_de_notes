@@ -29,6 +29,12 @@ except StopIteration:
         f"Fichier modele introuvable : placez un fichier 'Exemple ....xlsx' dans {TEMPLATES_DIR}"
     )
 TEMPLATE_AR_PATH = next(TEMPLATES_DIR.glob("AR*.docx"), None)
+# Modeles de diplome national par cycle (annee terminale L3 / M2). Optionnels :
+# le diplome n'est genere que si le modele du cycle concerne est present.
+DIPLOME_TEMPLATES = {
+    "Licence": next(TEMPLATES_DIR.glob("Diplome*Licence*.docx"), None),
+    "Mastère": next(TEMPLATES_DIR.glob("Diplome*Mast*.docx"), None),
+}
 RUNS_DIR = BASE_DIR / "web_runs"
 RUNS_DIR.mkdir(exist_ok=True)
 
@@ -46,6 +52,15 @@ def inject_in_docker():
 
 def is_valid_batch_id(batch_id):
     return bool(batch_id) and all(c.isalnum() or c in "-_" for c in batch_id) and ".." not in batch_id
+
+
+def format_date_fr(value):
+    """Convertit la date du champ HTML (AAAA-MM-JJ) en JJ/MM/AAAA pour le
+    releve. Laisse la valeur telle quelle si le format n'est pas reconnu."""
+    try:
+        return datetime.strptime(value, "%Y-%m-%d").strftime("%d/%m/%Y")
+    except (ValueError, TypeError):
+        return value or ""
 
 
 def _niveaux_valides(filiere):
@@ -70,13 +85,20 @@ def upload():
     if filiere not in gen.FILIERES or niveau not in _niveaux_valides(filiere):
         flash("Merci de choisir une filière et un niveau.", "error")
         return redirect(url_for("index"))
-    return render_template("upload.html", filiere=filiere, niveau=niveau)
+    return render_template(
+        "upload.html", filiere=filiere, niveau=niveau,
+        annees=gen.academic_year_choices(),
+        annee_defaut=gen.current_academic_year(),
+        date_defaut=datetime.now().strftime("%Y-%m-%d"),
+    )
 
 
 @app.route("/generate", methods=["POST"])
 def generate():
     filiere = request.form.get("filiere", "")
     niveau = request.form.get("niveau", "")
+    annee_universitaire = request.form.get("annee_universitaire", "").strip()
+    date_remplissage = format_date_fr(request.form.get("date_remplissage", "").strip())
     pv_file = request.files.get("pv_file")
     coords_file = request.files.get("coords_file")
     make_pdf = request.form.get("make_pdf") == "on"
@@ -114,6 +136,9 @@ def generate():
             filiere_code=gen.FILIERES[filiere],
             ar_template_path=TEMPLATE_AR_PATH,
             niveau=niveau,
+            annee_universitaire=annee_universitaire,
+            date_remplissage=date_remplissage,
+            diplome_templates=DIPLOME_TEMPLATES,
         )
     except Exception as exc:
         traceback.print_exc()
@@ -138,6 +163,12 @@ def generate():
             if (output_dir / ar_name).exists():
                 ar_by_xlsx[x.name] = ar_name
 
+    diplome_by_xlsx = {}
+    for x in generated:
+        dip_name = "Diplome_" + x.name[len("Releve_"):].rsplit(".", 1)[0] + ".docx"
+        if (output_dir / dip_name).exists():
+            diplome_by_xlsx[x.name] = dip_name
+
     zip_path = batch_dir / "releves.zip"
     shutil.make_archive(str(zip_path.with_suffix("")), "zip", str(output_dir))
 
@@ -148,6 +179,7 @@ def generate():
         students=students,
         pdf_by_xlsx=pdf_by_xlsx,
         ar_by_xlsx=ar_by_xlsx,
+        diplome_by_xlsx=diplome_by_xlsx,
         warnings=warnings,
         zip_name=zip_path.name,
     )

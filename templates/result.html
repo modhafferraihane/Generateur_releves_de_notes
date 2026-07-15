@@ -60,6 +60,7 @@
             <th>Excel</th>
             {% if pdf_by_xlsx %}<th>PDF</th>{% endif %}
             {% if ar_by_xlsx %}<th>Attestation</th>{% endif %}
+            {% if diplome_by_xlsx %}<th>Diplôme</th>{% endif %}
           </tr>
         </thead>
         <tbody>
@@ -80,6 +81,15 @@
                 <td>
                   {% if ar_by_xlsx.get(name) %}
                     <a class="file-link" href="{{ url_for('download', batch_id=batch_id, filename=ar_by_xlsx[name]) }}">.docx</a>
+                  {% else %}
+                    <span class="muted-dash">—</span>
+                  {% endif %}
+                </td>
+              {% endif %}
+              {% if diplome_by_xlsx %}
+                <td>
+                  {% if diplome_by_xlsx.get(name) %}
+                    <a class="file-link" href="{{ url_for('download', batch_id=batch_id, filename=diplome_by_xlsx[name]) }}">.docx</a>
                   {% else %}
                     <span class="muted-dash">—</span>
                   {% endif %}

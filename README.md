@@ -1,8 +1,9 @@
 # Générateur de relevés de notes
 
-Ce programme crée automatiquement les relevés de notes et les attestations
-de réussite des étudiants, à partir du PV de délibération (le fichier Excel
-avec toutes les notes). Plus besoin de les remplir un par un à la main.
+Ce programme crée automatiquement les relevés de notes des étudiants (et,
+en dernière année, leur diplôme national), à partir du PV de délibération
+(le fichier Excel avec toutes les notes). Plus besoin de les remplir un par
+un à la main.
 
 ## Ce qu'il vous faut avant de commencer
 
@@ -34,8 +35,10 @@ releves de notes"** est créée sur le Bureau pour le relancer plus tard.
 2. Le site s'ouvre sur **http://127.0.0.1:5000**.
 3. Choisissez la filière, puis le niveau.
 4. Déposez le PV de délibération (et le fichier des coordonnées des
-   étudiants si vous l'avez, pour compléter date de naissance et CIN).
-5. Cochez "Générer aussi les PDF" si besoin.
+   étudiants si vous l'avez : il complète la date de naissance, le CIN, et
+   le "Mme / M." des diplômes).
+5. Vérifiez l'année universitaire et la date de remplissage (déjà
+   pré-remplies), puis cochez "Générer aussi les PDF" si besoin.
 6. Cliquez sur "Générer les relevés", puis téléchargez les fichiers (un par
    un ou tous d'un coup via "Télécharger tout (ZIP)").
 
@@ -44,9 +47,17 @@ Pour arrêter : fermez la fenêtre noire ouverte avec le programme.
 ## À savoir
 
 - La mention du jury (Admis, Assez Bien...) n'est pas remplie
-  automatiquement : à ajouter vous-même après génération.
-- Date de naissance et CIN ne sont remplis que si le fichier des
-  coordonnées des étudiants est fourni.
+  automatiquement sur le relevé : à ajouter vous-même après génération.
+- Date de naissance, CIN et civilité (Mme / M., Né / Née) ne sont remplis
+  que si le fichier des coordonnées des étudiants est fourni. Cet onglet doit
+  correspondre au niveau et à la filière choisis (ex. onglet "L3GLSI").
+- **Diplôme (dernière année seulement).** Pour une 3ème année de Licence
+  (L3) ou une 2ème année de Mastère (M2), un diplôme national (.docx) est
+  aussi généré pour chaque étudiant, en plus du relevé. La mention d'honneur
+  est calculée depuis la moyenne annuelle. Le champ "Mention" reprend la
+  filière indiquée dans le PV. Pour le Mastère, les moyennes par semestre et
+  le nombre de crédits restent à compléter à la main (le PV de 2ème année ne
+  couvre pas la 1ère).
 
 ## En cas de problème
 
@@ -68,27 +79,33 @@ ressources, comme on le voit dans Docker Desktop :
 > Windows) : utilisez l'installation classique ci-dessus si vous en avez
 > besoin.
 
-Il vous faut [Docker Desktop](https://docs.docker.com/desktop/setup/install/windows-install/)
-installé et lancé, ainsi que le fichier modèle de votre établissement
-(`Exemple ... .xlsx`, et `AR ... .docx` si vous en avez un).
+Il vous faut seulement [Docker Desktop](https://docs.docker.com/desktop/setup/install/windows-install/)
+installé et lancé. Le fichier modèle est déjà inclus dans l'image : rien
+d'autre à préparer.
 
-1. Dans un dossier de votre choix, créez un sous-dossier **modeles** et
-   mettez-y votre fichier modèle.
-2. Ouvrez un terminal (PowerShell recommandé) dans ce dossier et lancez :
+1. Ouvrez un terminal (PowerShell recommandé) et lancez :
 
    ```
-   docker run -d --name generateur-releves -p 127.0.0.1:5000:5000 -v ./modeles://app/modeles:ro modovar/generateur-releves:1.0
+   docker run -d --name generateur-releves -p 127.0.0.1:5000:5000 modovar/generateur-releves:2.0
    ```
 
-   > Le double `//` avant `app/modeles` est volontaire (bug connu de Git
-   > Bash sinon).
-
-3. Ouvrez **http://127.0.0.1:5000** — un badge **🐳 Docker** confirme que
+2. Ouvrez **http://127.0.0.1:5000** — un badge **🐳 Docker** confirme que
    c'est bien cette version qui tourne.
 
 Pour arrêter/relancer : `docker stop generateur-releves` /
-`docker start generateur-releves`. Si vous mettez à jour le fichier
-modèle, faites `docker restart generateur-releves`.
+`docker start generateur-releves`.
+
+> **Modèle personnalisé (optionnel).** Pour utiliser *votre* fichier modèle
+> (logo/établissement différent) au lieu de celui inclus, mettez-le dans un
+> sous-dossier **modeles** et montez-le au lancement :
+>
+> ```
+> docker run -d --name generateur-releves -p 127.0.0.1:5000:5000 -v ./modeles://app/modeles:ro modovar/generateur-releves:2.0
+> ```
+>
+> Le double `//` avant `app/modeles` est volontaire (bug connu de Git Bash
+> sinon). Après avoir changé le fichier, faites `docker restart
+> generateur-releves`.
 
 Vos fichiers générés ne sont pas conservés ailleurs : téléchargez-les tout
 de suite. Supprimer le conteneur (`docker rm`) efface tout, volontairement,
